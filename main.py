@@ -1,60 +1,85 @@
+import pandas as pd
 import numpy as np
-import cv2
-import os
-from skimage import io
 import matplotlib.pyplot as plt
 from sklearn.cluster import KMeans
+from sklearn.metrics import confusion_matrix, accuracy_score
+import faraway.datasets.composite
 
-np.set_printoptions(threshold=1000)
-images = []
-masks = []
-sum_img_pixels = []
+###################################################################
+# Exercitiul 1
+data=pd.read_csv('./csv/heart.csv')
+data_train = data.drop(['output', 'trtbps'], axis=1)
+# print(data.head())
 
-directory = 'images/lab3'
-
-for filename in os.listdir(directory):
-    if 'mask' in filename:
-        img = cv2.imread((os.path.join(directory, filename)), cv2.IMREAD_GRAYSCALE)
-        masks.append(img)
-    if 'img' in filename:
-        img = cv2.imread((os.path.join(directory, filename)))
-        images.append(img)
-    sum_img_pixels.append(np.sum(img))
-
-
-np_images = np.array(images)
-np_masks = np.array(masks)
-
-mean_image = np.mean(np_images, axis=0)
-sigma = np.uint8(np.std(np_images, axis=0))
-
-num_clusters = 5
-for img in np_images:
-    img_norm = np.uint8((img-mean_image)/sigma)
-
-for img, mask in zip(images, masks):
-    # Aplicăm K-Means pentru fiecare imagine
-    pixels = img.reshape((-1, 3))
-    kmeans = KMeans(n_clusters=num_clusters)
-    kmeans.fit(pixels)
-
-    # Obținem noile culori ca medie a clusterelor
-    centers = np.uint8(kmeans.cluster_centers_)
-    new_pixels = centers[kmeans.labels_]
-
-    # Reconstruim imaginea pe baza noilor culori
-    cluster_image = new_pixels.reshape(img.shape)
-
-    # Masca (dacă este necesar să o folosim pentru a modifica anumite părți ale imaginii)
-    if mask is not None:
-        mask_indices = mask > 0
-        cluster_image[mask_indices] = [255, 0, 0]  # Aplicăm masca pentru a modifica culorile respective în roșu
-
-    # Afișăm imaginea rezultată după aplicarea K-Means și eventuala aplicare a măștii
-    io.imshow(cluster_image)
-    io.show()
-
-
-# normalized_images = np.uint8((img-mean_image)/sigma)
-# plt.imshow(cv2.cvtColor(normalized_images[0].astype('uint8'), cv2.COLOR_BGR2RGB))
+# (data_train['sex'].value_counts().sort_values(ascending=False)
+#     .plot(kind='pie'))
 # plt.show()
+
+
+mean = np.mean(data_train, axis=0)
+sigma = np.std(data_train, axis=0)
+
+normalized_data = (data_train - mean) / sigma
+# print(mean)
+
+# print(normalized_data.head())
+# (normalized_data['age'].value_counts().sort_values(axis=0, ascending=False)
+#     .head(20).plot(kind="bar"))
+# plt.show()
+
+# (data['age'].value_counts().sort_values(axis=0, ascending=False)
+#     .head(20).plot(kind="bar"))
+# plt.show()
+
+# sns.countplot(x='cp', data=data)
+# plt.title('Numărul pacienților pentru fiecare tip de durere în piept')
+# plt.xlabel('Tipul durerii în piept')
+# plt.ylabel('Număr de pacienți')
+# plt.show()
+
+
+kmeans = KMeans(n_clusters=2, random_state=42)
+kmeans.fit(data_train)
+
+
+norm_kmeans =  KMeans(n_clusters=2, random_state=32)
+norm_kmeans.fit(normalized_data)
+
+# print(kmeans.cluster_centers_)
+# print(kmeans.labels_)
+# print(data['output'])
+
+
+# cof_matrix = confusion_matrix(data['output'], kmeans.labels_)
+# print("Matricea de confuzie:")
+# print(conf_matrix)
+#
+# norm_conf_matrix = confusion_matrix(data['output'], norm_kmeans.labels_)
+# print("Matricea de confuzie normalizata:")
+# print(norm_conf_matrix)
+
+inertia = []
+for k in range(1, 11):
+    kmeans = KMeans(n_clusters=k, random_state=42).fit(data_train)
+    inertia.append(kmeans.inertia_)
+
+norm_inertia = []
+for k in range(1, 11):
+    kmeans_norm = KMeans(n_clusters=k, random_state=32).fit(normalized_data)
+    norm_inertia.append(kmeans_norm.inertia_)
+    print(kmeans_norm.inertia_)
+
+plt.plot(inertia)
+plt.ylabel("Inertia")
+plt.show()
+
+plt.plot(norm_inertia)
+plt.ylabel("Inertia")
+plt.show()
+
+
+# print(inertia, norm_inertia)
+#########################################################################
+# Exercitiul 2
+
+composite = faraway.datasets.composite.load()
